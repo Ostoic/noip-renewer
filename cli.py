@@ -6,6 +6,7 @@ from selenium import webdriver
 
 from loguru import logger
 from noip_renewer import Creds, make_noip_renewer
+from noip_renewer.util import public_ip
 
 parser = ArgumentParser(
     prog="noip-renewer",
@@ -15,8 +16,9 @@ parser = ArgumentParser(
 parser.add_argument("-u", "--username", required=True)
 parser.add_argument("-p", "--password", required=True)
 parser.add_argument("-v", "--verbose", action="store_true")
-
+parser.add_argument("--headless", default=False, action="store_true")
 args = parser.parse_args()
+logger.debug(f'{args=}')
 
 try:
     pw_path = Path(args.password)
@@ -40,9 +42,11 @@ if args.password is None or len(args.password) == 0:
 
 credentials = Creds(args.username, args.password)
 options = webdriver.FirefoxOptions()
-# options.headless = True
+options.headless = args.headless
 
 driver = webdriver.Firefox(options=options)
-with make_noip_renewer(driver, credentials) as confirmer:
+logger.info(f'Public ip: {public_ip(driver)}')
+
+with make_noip_renewer(driver, credentials) as renewer:
     logger.info("Logged in!")
-    confirmer.run()
+    renewer.run()
