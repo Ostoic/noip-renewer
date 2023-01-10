@@ -3,7 +3,6 @@ Confirm all noip hosts that are about to expire.
 """
 
 from contextlib import contextmanager
-from pathlib import Path
 from typing import List
 
 from selenium import webdriver
@@ -15,7 +14,26 @@ from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
-from .log import logger
+from loguru import logger
+
+
+class Creds:
+    """Credentials used to login to noip account"""
+
+    def __init__(self, username: str, password: str):
+        self.username = username
+        self.password = password
+
+
+class LoginError(Exception):
+    """Error thrown when logging in fails"""
+
+
+def _account_container_appeared(driver):
+    if driver.find_element(By.XPATH, "//div[@class='alert alert-error row']"):
+        raise LoginError("Incorrect username or password")
+
+    return driver.find_element(By.ID, "user-email-container")
 
 
 class NoipRenewer:
@@ -24,44 +42,48 @@ class NoipRenewer:
 
     """
 
-    def __init__(self, driver: webdriver.Firefox, username: str, password: str):
+    RENEWER_TIMEOUT = 60
+
+    def __init__(self, driver: webdriver.Firefox, credentials: Creds):
         self._driver = driver
-        self.username = username
-        self.password = password
+        self.credentials = credentials
 
     def _is_logged_in(self) -> bool:
-        return iter(self._driver.find_element(By.ID, value="username"))
+        return self._driver.find_element(By.ID, "user-email-container") is not None
 
     def login(self):
         """Load the noip login page and enter credentials"""
         self._driver.get(url="https://www.noip.com/login")
-        logger.debug("Logging in...")
+        logger.debug(f"Logging in as {self.credentials.username}...")
         user_input = self._driver.find_element(By.ID, value="username")
         user_input.click()
-        user_input.send_keys(self.username)
+        user_input.send_keys(self.credentials.username)
 
         pass_input = self._driver.find_element(By.ID, value="password")
         pass_input.click()
-        pass_input.send_keys(self.password)
+        pass_input.send_keys(self.credentials.password)
         pass_input.send_keys(Keys.RETURN)
 
         # Wait for presence of account dropdown menu
-        WebDriverWait(self._driver, 30).until(
-            EC.presence_of_element_located((By.ID, "user-email-container"))
+        WebDriverWait(self._driver, NoipRenewer.RENEWER_TIMEOUT).until(
+            _account_container_appeared
         )
 
-    def _find_user_container(self):
-        return self._driver.find_element(By.ID, "user-email-container")
-
     def logout(self):
-        user_cont = self._find_user_container()
-        user_cont.click()
+        """Logout by clicking through the account container"""
+        if not self._is_logged_in():
+            return
 
-        logout_cont = user_cont.find_element(By.XPATH, "//a/i[@class='fa fa-sign-out']")
-        logout_cont.click()
+        account_container = self._driver.find_element(By.ID, "user-email-container")
+        account_container.click()
+
+        logout_icon = account_container.find_element(
+            By.XPATH, "//a/i[@class='fa fa-sign-out']"
+        )
+        logout_icon.click()
 
         # Wait for login page to load
-        WebDriverWait(self._driver, 30).until(
+        WebDriverWait(self._driver, NoipRenewer.RENEWER_TIMEOUT).until(
             EC.presence_of_element_located((By.ID, "username"))
         )
 
@@ -71,31 +93,33 @@ class NoipRenewer:
             "//button[@class='btn btn-labeled btn-success' and text()='Confirm']",
         )
 
-    def run(self):
-        """Start confirming hosts"""
-        self.login()
-        logger.info("Logged in!")
+    def run(self) -> int:
+        """Run hosts renewal"""
         self._driver.get(url="https://my.noip.com/dynamic-dns")
 
         # Wait for hosts table to load
         logger.debug("Waiting for hosts table to load...")
-        WebDriverWait(self._driver, 30).until(
+        WebDriverWait(self._driver, NoipRenewer.RENEWER_TIMEOUT).until(
             EC.presence_of_element_located(
                 (By.XPATH, "//thead/tr/th/span[text()='Hostname']")
             )
         )
 
-        self.confirm_hosts()
+        num_renewed = self.renew_hosts()
+        logger.info(f"Renewed {num_renewed} hosts.")
+        return num_renewed
 
-    def confirm_hosts(self):
+    def renew_hosts(self) -> int:
         """Find all hosts that are expiring soon and click their confirm buttons for renewal"""
         confirm_buttons = self._find_host_confirm_buttons()
         logger.debug(f"{confirm_buttons=}")
         for confirm in confirm_buttons:
             confirm.click()
             logger.info(f"Clicked {confirm}")
-            WebDriverWait(self._driver, 30).until_not(confirm.is_displayed)
-        logger.info(f"Renewed {len(confirm_buttons)} hosts.")
+            WebDriverWait(self._driver, NoipRenewer.RENEWER_TIMEOUT).until_not(
+                confirm.is_displayed
+            )
+        return len(confirm_buttons)
 
     def exit(self):
         """Closes the webdriver."""
@@ -103,16 +127,15 @@ class NoipRenewer:
 
 
 @contextmanager
-def make_noip_renewer(driver, creds_path: Path) -> NoipRenewer:
+def make_noip_renewer(driver, credentials: Creds) -> NoipRenewer:
     """
         Create a NoipConfirmer context that logs out then closes the webdriver
     when it goes out of scope
     """
     try:
-        with open(creds_path, encoding="utf-8") as creds_file:
-            creds = iter(creds_file.readline().split(":"))
 
-        confirmer = NoipRenewer(driver, next(creds), next(creds))
+        confirmer = NoipRenewer(driver, credentials)
+        confirmer.login()
         yield confirmer
     finally:
         confirmer.logout()
