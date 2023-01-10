@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "noip-renewer"
+version = "0.0.1"
+description = ""
+authors = ["Shaun Ostoic <ostoic@uwindsor.ca>"]
+readme = "README.md"
+packages = [{include = "src/noip_renewer"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+selenium = "^4.7.2"
+loguru = "^0.6.0"
+logging = "^0.4.9.6"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
