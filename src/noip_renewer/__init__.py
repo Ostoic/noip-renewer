@@ -35,10 +35,11 @@ def _is_logged_in(driver) -> bool:
 
 
 def _account_container_appeared(driver):
-    if len(driver.find_elements(By.XPATH, "//div[@class='alert alert-error row']")) == 0:
+    if len(driver.find_elements(By.XPATH, "//div[@class='alert alert-error row']")) > 0:
         raise LoginError("Incorrect username or password")
 
     return _is_logged_in(driver)
+
 
 class NoipRenewer:
     """
