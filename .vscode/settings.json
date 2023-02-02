@@ -1,11 +1,10 @@
 {
-    "terminal.integrated.env.osx": {
-      "PYTHONPATH": "${workspaceFolder}/src",
+    "[python]": {
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": true,
+            "editor.formatOnSave": true,
+        }
     },
-    "terminal.integrated.env.linux": {
-      "PYTHONPATH": "${workspaceFolder}/src",
-    },
-    "terminal.integrated.env.windows": {
-      "PYTHONPATH": "${workspaceFolder}/src",
-    }
-  }
+    "python.linting.mypyEnabled": true,
+    "python.linting.enabled": true
+}

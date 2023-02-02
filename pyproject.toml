@@ -4,13 +4,15 @@ version = "0.0.1"
 description = ""
 authors = ["Shaun Ostoic <ostoic@uwindsor.ca>"]
 readme = "README.md"
-packages = [{include = "src"}]
 
 [tool.poetry.dependencies]
 python = "^3.8"
 selenium = "^4.7.2"
 loguru = "^0.6.0"
 logging = "^0.4.9.6"
+
+[tool.poetry.group.dev.dependencies]
+mypy = "^0.991"
 
 [build-system]
 requires = ["poetry-core"]

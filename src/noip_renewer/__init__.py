@@ -3,19 +3,17 @@ Confirm all noip hosts that are about to expire.
 """
 
 from contextlib import contextmanager
-from typing import List
+from typing import Generator, List
 
+from loguru import logger
 from selenium import webdriver
-from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webelement import WebElement
-from selenium.common.exceptions import NoSuchElementException
+from selenium.webdriver.support import expected_conditions as EC
 
 # from selenium.webdriver.common.
 from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-
-from loguru import logger
 
 
 class Creds:
@@ -82,6 +80,7 @@ class NoipRenewer:
         logout_icon = account_container.find_element(
             By.XPATH, "//a/i[@class='fa fa-sign-out']"
         )
+
         logout_icon.click()
 
         # Wait for login page to load
@@ -115,12 +114,18 @@ class NoipRenewer:
         """Find all hosts that are expiring soon and click their confirm buttons for renewal"""
         confirm_buttons = self._find_host_confirm_buttons()
         logger.debug(f"{confirm_buttons=}")
+        if len(confirm_buttons) == 0:
+            return 0
+
         for confirm in confirm_buttons:
             confirm.click()
             logger.info(f"Clicked {confirm}")
-            WebDriverWait(self._driver, NoipRenewer.RENEWER_TIMEOUT).until_not(
-                confirm.is_displayed
-            )
+
+        # Wait for all buttons to disappear before finishing.
+        WebDriverWait(self._driver, NoipRenewer.RENEWER_TIMEOUT).until(
+            lambda _: all(map(lambda b: not b.is_displayed(), confirm_buttons))
+        )
+
         return len(confirm_buttons)
 
     def exit(self):
@@ -129,7 +134,7 @@ class NoipRenewer:
 
 
 @contextmanager
-def make_noip_renewer(driver, credentials: Creds) -> NoipRenewer:
+def make_noip_renewer(driver, credentials: Creds) -> Generator[NoipRenewer, None, None]:
     """
         Create a NoipConfirmer context that logs out then closes the webdriver
     when it goes out of scope
