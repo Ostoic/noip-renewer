@@ -1,19 +1,41 @@
-[tool.poetry]
-name = "noip-renewer"
-version = "0.0.1"
-description = ""
-authors = ["Shaun Ostoic <ostoic@uwindsor.ca>"]
-readme = "README.md"
-
-[tool.poetry.dependencies]
-python = "^3.8"
-selenium = "^4.7.2"
-loguru = "^0.6.0"
-logging = "^0.4.9.6"
-
-[tool.poetry.group.dev.dependencies]
-mypy = "^0.991"
-
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "noip_renewer"
+version = "0.1.1"
+authors = [
+    { name = "Shaun Ostoic", email = "ostoic@proton.me" },
+]
+
+description = "Automated dynamic IP host renewer."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = ["selenium", "loguru"]
+
+[project.optional-dependencies]
+dev = ["pytest", "ruff", "black"]
+
+[project.scripts]
+noip_renewer = "noip_renewer:cli"
+
+[tool.pylint]
+max-line-length = 100
+disable = "too-many-arguments"
+good-names = ['s', 'db', 'n', 'i']
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+select = ["I", "E", "F", "B", "W"]
+
+ignore = [
+    "F821",
+    "F401",
+    "F841",
+    # "B018",
+] # Remove ruff disable lint option from quick actions. Also disable removing unused imports since __init__.py in library packages follow this pattern.
+
+[tool.black]
+experimental-string-processing = true

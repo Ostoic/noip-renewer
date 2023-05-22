@@ -1,10 +1,23 @@
 {
+    "python.analysis.typeCheckingMode": "basic",
+    "python.linting.enabled": true,
+    "python.formatting.provider": "black",
+    "black-formatter.args": [
+        "--line-length=100",
+        "--experimental-string-processing",
+        "--preview"
+    ],
+    // "python.formatting.blackArgs": [
+    //     "--line-length=100",
+    //     // "--experimental-string-processing",e
+    //     "--preview",
+    // ],
     "[python]": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "ms-python.black-formatter",
         "editor.codeActionsOnSave": {
-            "source.organizeImports": true,
-            "editor.formatOnSave": true,
-        }
+            "source.fixAll": true,
+            "source.organizeImports": true
+        },
     },
-    "python.linting.mypyEnabled": true,
-    "python.linting.enabled": true
 }
